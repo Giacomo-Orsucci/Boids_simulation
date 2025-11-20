@@ -1,24 +1,26 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
-#include <SFML/Window.hpp>
+#include <SFML/Graphics.hpp>
 #include <bits/stdc++.h>
 
 struct Boid {
     float x, y;
     float vx, vy;
+    std::unique_ptr<sf::Shape> shape;
 };
 
-float squared_distance(Boid a, Boid b);
+float squared_distance(const Boid& a, const Boid& b);
 float random_float(float min, float max);
+void print_boid(Boid& boid, sf::RenderWindow& window);
 
 int main() {
-    constexpr int N = 4;
+    constexpr int N = 1000;
 
-    std::unique_ptr<Boid[]> boids(new Boid[N]);
+    std::vector<Boid> boids(N);
 
     //Constants definition
-    constexpr float TURN_FACTOR = 0.2f;
+    constexpr float TURN_FACTOR = 0.2;
     constexpr float VISUAL_RANGE = 40;
     constexpr float PROTECTED_RANGE = 8;
     constexpr float CENTERING_FACTOR = 0.0005;
@@ -26,28 +28,35 @@ int main() {
     constexpr float MATCHING_FACTOR= 0.05;
     constexpr float MAX_SPEED= 6;
     constexpr float MIN_SPEED= 3;
-    constexpr float TOP_MARGIN = 600;
-    constexpr float BOT_MARGIN = 800;
+    constexpr int TOP_MARGIN = 600;
+    constexpr float BOT_MARGIN = 0;
     constexpr float LEFT_MARGIN = 0;
-    constexpr float RIGHT_MARGIN = 0;
+    constexpr int RIGHT_MARGIN = 800;
+    constexpr float MARGIN = 80;
 
     float speed = 0;
 
     //boids initialization
     for (int i=0; i < N; i++) {
-        boids[i].x = random_float(LEFT_MARGIN, RIGHT_MARGIN);
-        boids[i].y = random_float(BOT_MARGIN, TOP_MARGIN);
+        boids[i].x = random_float(LEFT_MARGIN+MARGIN, RIGHT_MARGIN-MARGIN);
+        boids[i].y = random_float(BOT_MARGIN+MARGIN, TOP_MARGIN-MARGIN);
 
-        boids[i].vx = random_float(MIN_SPEED, MAX_SPEED);
-        boids[i].vy = random_float(MIN_SPEED, MAX_SPEED);
+        boids[i].vx = random_float(-MAX_SPEED, MAX_SPEED);
+        boids[i].vy = random_float(-MAX_SPEED, MAX_SPEED);
+
+
+        boids[i].shape = std::make_unique<sf::CircleShape>(3.f, 3);
     }
 
     //Graphical window creation
-    sf::Window window(sf::VideoMode({800, 600}), "Boids simulation");
+    const int X_SIZE = RIGHT_MARGIN + MARGIN;
+    const int Y_SIZE =  TOP_MARGIN + MARGIN;
+
+    sf::RenderWindow window(sf::VideoMode({X_SIZE, Y_SIZE}), "Boids simulation");
     window.setFramerateLimit(60); // call it once after creating the window
 
-    while (window.isOpen())
-    {
+    while (window.isOpen()) {
+        window.clear(sf::Color::Black);
         while (const std::optional event = window.pollEvent())
         {
 
@@ -55,32 +64,38 @@ int main() {
                 window.close();
         }
 
-        //To score every boid
+        for (int i=0; i<N; i++)
+            print_boid(boids[i], window);
+
+
+        //To scan every boid
         for (int i=0; i<N; i++) {
 
             //Variables definition
             float dx =0, dy = 0, sqd=0, close_dx=0, close_dy=0, x_avg=0,
             y_avg=0, xv_avg=0, yv_avg=0, n_neighbours=0;
 
-            //To compare every boid with every one else (circular logic)
-            for (int j=(i+1); j != i; j = (j+1) % N) {
-
+            //To compare every boid with everyone else
+            for (int j = 0; j<N; j++){
+                if (j==i)
+                    continue;
 
                 dx = boids[i].x - boids[j].x;
                 dy = boids[i].y - boids[j].y;
 
                 if (std::fabs(dx)<VISUAL_RANGE && std::fabs(dy)<VISUAL_RANGE) {
 
-                    sqd = squared_distance(boids[i], boids[j]);
+                    sqd = squared_distance((boids[i]), boids[j]);
 
                     if (sqd < PROTECTED_RANGE*PROTECTED_RANGE) {
                         //Distance from near boids
-                        close_dx += dx;
-                        close_dy += dy;
-                    //if not in protected range, check the visual one
+                        close_dx += (boids[i].x - boids[j].x);
+                        close_dy += (boids[i].y - boids[j].y);
+
+                        //if not in protected range, check the visual one
                     }else if (sqd < VISUAL_RANGE*VISUAL_RANGE) {
-                        x_avg += dx;
-                        y_avg += dy;
+                        x_avg += boids[j].x;
+                        y_avg += boids[j].y;
                         xv_avg += boids[j].vx;
                         yv_avg += boids[j].vy;
                         n_neighbours++;
@@ -98,17 +113,17 @@ int main() {
                 boids[i].vx = boids[i].vx + (x_avg-boids[i].x)*CENTERING_FACTOR + (xv_avg - boids[i].vx)*MATCHING_FACTOR;
                 boids[i].vy = boids[i].vy + (y_avg-boids[i].y)*CENTERING_FACTOR + (yv_avg - boids[i].vy)*MATCHING_FACTOR;
             }
-            boids[i].vx += boids[i].vx + close_dx*AVOID_FACTOR;
-            boids[i].vy += boids[i].vy + close_dy*AVOID_FACTOR;
+            boids[i].vx = boids[i].vx + close_dx*AVOID_FACTOR;
+            boids[i].vy = boids[i].vy + close_dy*AVOID_FACTOR;
 
             //Verification of edges condition
-            if (boids[i].y > TOP_MARGIN)
-                boids[i].vy += TURN_FACTOR;
-            if (boids[i].y < BOT_MARGIN)
+            if (boids[i].y > TOP_MARGIN-MARGIN)
                 boids[i].vy -= TURN_FACTOR;
-            if (boids[i].x > LEFT_MARGIN)
+            if (boids[i].y < BOT_MARGIN + MARGIN)
+                boids[i].vy += TURN_FACTOR;
+            if (boids[i].x < LEFT_MARGIN + MARGIN)
                 boids[i].vx += TURN_FACTOR;
-            if (boids[i].x < RIGHT_MARGIN)
+            if (boids[i].x > RIGHT_MARGIN - MARGIN)
                 boids[i].vx -= TURN_FACTOR;
 
             speed = sqrt(pow(boids[i].vx, 2) + pow(boids[i].vy, 2));
@@ -124,13 +139,12 @@ int main() {
 
             boids[i].x += boids[i].vx;
             boids[i].y += boids[i].vy;
+
         }
-}
-
+        window.display();
+    }
     return 0;
-    // TIP See CLion help at <a href="https://www.jetbrains.com/help/clion/">jetbrains.com/help/clion/</a>. Also, you can try interactive lessons for CLion by selecting 'Help | Learn IDE Features' from the main menu.
 }
-
 
 float random_float(float min, float max) {
 
@@ -139,7 +153,12 @@ float random_float(float min, float max) {
     return dist(gen);
 }
 
-float squared_distance(Boid a, Boid b){
+float squared_distance(const Boid& a, const Boid& b){
     return static_cast<float>(pow((a.x - b.x), 2) + pow(a.y - b.y, 2));
+}
+void print_boid(Boid& boid, sf::RenderWindow& window) {
+    boid.shape->setPosition({boid.x, boid.y});
+    window.draw(*boid.shape);
+
 }
 
