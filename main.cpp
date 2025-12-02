@@ -36,6 +36,10 @@ int main() {
 
     float speed = 0;
 
+    int iterations = 0;
+    //in microseconds to be more precise
+    std::chrono::microseconds total_duration = std::chrono::microseconds::zero();
+
     //boids initialization
     for (int i=0; i < N; i++) {
         boids[i].x = random_float(LEFT_MARGIN+MARGIN, RIGHT_MARGIN-MARGIN);
@@ -43,7 +47,6 @@ int main() {
 
         boids[i].vx = random_float(-MAX_SPEED, MAX_SPEED);
         boids[i].vy = random_float(-MAX_SPEED, MAX_SPEED);
-
 
         boids[i].shape = std::make_unique<sf::CircleShape>(3.f, 3);
     }
@@ -55,7 +58,7 @@ int main() {
     sf::RenderWindow window(sf::VideoMode({X_SIZE, Y_SIZE}), "Boids simulation");
     window.setFramerateLimit(60); // call it once after creating the window
 
-    while (window.isOpen()) {
+    while (window.isOpen() && iterations < 200) {
         window.clear(sf::Color::Black);
         while (const std::optional event = window.pollEvent())
         {
@@ -67,7 +70,8 @@ int main() {
         for (int i=0; i<N; i++)
             print_boid(boids[i], window);
 
-
+        // without counting the graphic, pure boids performance
+        const auto start = std::chrono::high_resolution_clock::now();
         //To scan every boid
         for (int i=0; i<N; i++) {
 
@@ -141,8 +145,19 @@ int main() {
             boids[i].y += boids[i].vy;
 
         }
+        iterations++;
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        total_duration += duration;
+
         window.display();
+
+
     }
+    total_duration = std::chrono::duration_cast<std::chrono::microseconds>(total_duration);
+    printf("Frame %d duration: %lld microseconds\n", iterations, total_duration);
+
     return 0;
 }
 
