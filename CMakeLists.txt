@@ -21,6 +21,7 @@ FetchContent_Declare(SFML
         GIT_SHALLOW ON
         EXCLUDE_FROM_ALL
         SYSTEM)
+
 FetchContent_MakeAvailable(SFML)
 
 #Differentiations depending on CMake profile
@@ -46,7 +47,11 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Benchmark")
     add_compile_options("-g")
 endif()
 
-add_executable(Boids_simulation main.cpp)
+add_executable(Sequential main.cpp)
+target_compile_features(Sequential PRIVATE cxx_std_17)
+target_link_libraries(Sequential PRIVATE SFML::Graphics)
 
-target_compile_features(Boids_simulation PRIVATE cxx_std_17)
-target_link_libraries(Boids_simulation PRIVATE SFML::Graphics)
+add_executable(AOS_parallel AOS_parallel.cpp)
+target_compile_features(AOS_parallel  PRIVATE cxx_std_17)
+target_link_libraries(AOS_parallel  PRIVATE SFML::Graphics)
+

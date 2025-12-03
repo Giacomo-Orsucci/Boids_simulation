@@ -15,6 +15,10 @@ float random_float(float min, float max);
 void print_boid(Boid& boid, sf::RenderWindow& window);
 
 int main() {
+
+#ifdef _OPENMP
+    std::cout << "OPEN_MP working" << "\n";
+#endif
     constexpr int N = 1000;
 
     std::vector<Boid> boids(N);
@@ -34,7 +38,6 @@ int main() {
     constexpr int RIGHT_MARGIN = 800;
     constexpr float MARGIN = 80;
 
-    float speed = 0;
 
     int iterations = 0;
     //in microseconds to be more precise
@@ -72,15 +75,19 @@ int main() {
 
         // without counting the graphic, pure boids performance
         const auto start = std::chrono::high_resolution_clock::now();
-        //To scan every boid
-        for (int i=0; i<N; i++) {
+
+        // Here starts the parallelization
+#pragma omp parallel default(none) shared(N, boids)
+        {
+#pragma omp for schedule(static) // To Do: static or else?
+        for (int i=0; i<N; i++) { //To scan every boid
 
             //Variables definition
             float dx =0, dy = 0, sqd=0, close_dx=0, close_dy=0, x_avg=0,
             y_avg=0, xv_avg=0, yv_avg=0, n_neighbours=0;
 
             //To compare every boid with everyone else
-            for (int j = 0; j<N; j++){
+            for (int j = 0; j<N; j++){ // To Do: another pragma here?
                 if (j==i)
                     continue;
 
@@ -130,7 +137,7 @@ int main() {
             if (boids[i].x > RIGHT_MARGIN - MARGIN)
                 boids[i].vx -= TURN_FACTOR;
 
-            speed = sqrt(pow(boids[i].vx, 2) + pow(boids[i].vy, 2));
+            float speed = sqrt(pow(boids[i].vx, 2) + pow(boids[i].vy, 2));
 
             if (speed < MIN_SPEED) {
                 boids[i].vx = (boids[i].vx/speed)*MIN_SPEED;
@@ -144,6 +151,7 @@ int main() {
             boids[i].x += boids[i].vx;
             boids[i].y += boids[i].vy;
 
+        }
         }
         iterations++;
 
@@ -176,6 +184,4 @@ void print_boid(Boid& boid, sf::RenderWindow& window) {
     window.draw(*boid.shape);
 
 }
-
-
 
