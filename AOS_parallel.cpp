@@ -1,25 +1,27 @@
+#include "helper.h"
+
 #include <cmath>
 #include <iostream>
 #include <memory>
 #include <SFML/Graphics.hpp>
 #include <bits/stdc++.h>
+#include <omp.h>
 
-struct Boid {
-    float x, y;
-    float vx, vy;
-    std::unique_ptr<sf::Shape> shape;
-};
 
-float squared_distance(const Boid& a, const Boid& b);
-float random_float(float min, float max);
-void print_boid(Boid& boid, sf::RenderWindow& window);
+int main(int argc, char* argv[]) {
 
-int main() {
+    Config cfg;
+    const int N = cfg.N;
+    const int FRAMES = cfg.frames;
+
+    omp_set_num_threads(cfg.threads);
+    std::cout<<"Threads set: " <<cfg.threads<<"\n";
+
 
 #ifdef _OPENMP
     std::cout << "OPEN_MP working" << "\n";
 #endif
-    constexpr int N = 1000;
+
 
     std::vector<Boid> boids(N);
 
@@ -61,7 +63,7 @@ int main() {
     sf::RenderWindow window(sf::VideoMode({X_SIZE, Y_SIZE}), "Boids simulation");
     window.setFramerateLimit(60); // call it once after creating the window
 
-    while (window.isOpen() && iterations < 200) {
+    while (window.isOpen() && iterations < FRAMES) {
         window.clear(sf::Color::Black);
         while (const std::optional event = window.pollEvent())
         {
@@ -164,6 +166,9 @@ int main() {
 
     }
     total_duration = std::chrono::duration_cast<std::chrono::microseconds>(total_duration);
+    std::ofstream out("time.txt");
+    out << total_duration.count(); // microseconds
+    out.close();
     printf("Frame %d duration: %lld microseconds\n", iterations, total_duration);
 
     return 0;

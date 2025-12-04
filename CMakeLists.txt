@@ -47,11 +47,11 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Benchmark")
     add_compile_options("-g")
 endif()
 
-add_executable(Sequential main.cpp)
+add_executable(Sequential sequential.cpp helper.h)
 target_compile_features(Sequential PRIVATE cxx_std_17)
 target_link_libraries(Sequential PRIVATE SFML::Graphics)
 
-add_executable(AOS_parallel AOS_parallel.cpp)
+add_executable(AOS_parallel AOS_parallel.cpp helper.h)
 target_compile_features(AOS_parallel  PRIVATE cxx_std_17)
 target_link_libraries(AOS_parallel  PRIVATE SFML::Graphics)
 
