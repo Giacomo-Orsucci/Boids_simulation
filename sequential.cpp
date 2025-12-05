@@ -1,4 +1,4 @@
-#include "helper.h"
+#include "sequential_helper.h"
 
 
 #include <cmath>
@@ -7,11 +7,17 @@
 #include <SFML/Graphics.hpp>
 #include <bits/stdc++.h>
 
+/**
+ * This is the sequential version of boids simulation with graphics.
+ * The code has a pure sequential nature, so is not optimized and not designed for
+ * A parallel execution.
+ * **/
 
 
 int main(int argc, char* argv[]) {
 
     Config cfg;
+    cfg.parse(argc, argv);
     const int N = cfg.N;
     const int FRAMES = cfg.frames;
 
@@ -36,8 +42,8 @@ int main(int argc, char* argv[]) {
     float speed = 0;
 
     int iterations = 0;
-    //in microseconds to be more precise
-    std::chrono::microseconds total_duration = std::chrono::microseconds::zero();
+
+    std::chrono::milliseconds total_duration = std::chrono::milliseconds::zero();
 
     //boids initialization
     for (int i=0; i < N; i++) {
@@ -106,7 +112,7 @@ int main(int argc, char* argv[]) {
 
                 }
             }
-            //If there are boids in the visual range, make the boid goes to their center
+            //If there are boids in the visual range, make the boids go to their center
             if (n_neighbours > 0) {
                 x_avg /= n_neighbours;
                 y_avg /= n_neighbours;
@@ -147,7 +153,7 @@ int main(int argc, char* argv[]) {
         iterations++;
 
         auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         total_duration += duration;
 
         window.display();
@@ -155,12 +161,15 @@ int main(int argc, char* argv[]) {
 
     }
 
-    total_duration = std::chrono::duration_cast<std::chrono::microseconds>(total_duration);
-    std::ofstream out("time.txt");
-    out << total_duration.count(); // microseconds
-    out.close();
+    total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_duration);
 
-    printf("Frame %d duration: %lld microseconds\n", iterations, total_duration);
+    append_csv("sequential_results.csv",
+           cfg.N,
+           cfg.frames,
+           cfg.threads,
+           total_duration.count());
+
+    printf("Frame %d duration: %lld milliseconds\n", iterations, total_duration.count());
 
     return 0;
 }
@@ -178,7 +187,23 @@ float squared_distance(const Boid& a, const Boid& b){
 void print_boid(Boid& boid, sf::RenderWindow& window) {
     boid.shape->setPosition({boid.x, boid.y});
     window.draw(*boid.shape);
+}
+void append_csv(const std::string& filename,
+                int N, int frames, int threads,
+                long long time_ms)
+{
+    static bool first = true;
+    std::ofstream out(filename, std::ios::app);
 
+    if (first) {
+        out << "N,frames,threads,time_ms\n";
+        first = false;
+    }
+
+    out << N << ","
+        << frames << ","
+        << threads << ","
+        << time_ms << "\n";
 }
 
 

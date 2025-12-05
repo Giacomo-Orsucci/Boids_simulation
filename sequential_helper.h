@@ -48,3 +48,6 @@ struct Boid {
 float squared_distance(const Boid& a, const Boid& b);
 float random_float(float min, float max);
 void print_boid(Boid& boid, sf::RenderWindow& window);
+void append_csv(const std::string& filename,
+                int N, int frames, int threads,
+                long long time_ms);
