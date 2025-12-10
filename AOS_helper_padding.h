@@ -1,5 +1,15 @@
+//
+// Created by giacomo on 05/12/25.
+//
 
 #pragma once //to include the file only once
+
+/**
+ * This helper is very similar to the sequential one, but has a separation
+ * between the Boid struct and the graphics to facilitate the parallelization handling.
+ * Differently from AOS_helper uses alignment (and so padding implicitly).
+ **/
+
 
 #include <string>
 #include <iostream>
@@ -9,8 +19,8 @@
 
 struct Config {
 
-    int N = 4000;
-    int frames = 3000;
+    int N = 1000;
+    int frames = 300;
     int threads = 1;
 
 
@@ -39,15 +49,18 @@ struct Config {
     }
 };
 
+//Shape separated from Boid to better parallelize
 struct Boid {
     float x, y;
     float vx, vy;
-    std::unique_ptr<sf::Shape> shape;
-};
+} __attribute__((aligned(32))); //32 for my CPU. It guaranties that every struct (of 16 bytes) is aligned in memory via implicit padding.
+                                //Maybe it's not portable.
 
-float squared_distance(const Boid& a, const Boid& b);
+Boid* allocate_aligned_boids(int N);
+
 float random_float(float min, float max);
-void print_boid(Boid& boid, sf::RenderWindow& window);
+void print_boids(const Boid* boids, int N, std::vector<std::unique_ptr<sf::CircleShape>>& shapes,
+                 sf::RenderWindow& window);
 void append_csv(const std::string& filename,
                 int N, int frames, int threads,
                 long long time_ms);

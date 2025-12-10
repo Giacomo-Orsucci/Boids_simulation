@@ -1,4 +1,4 @@
-#include "AOS_helper.h"
+#include "AOS_helper_padding.h"
 
 #include <cmath>
 #include <iostream>
@@ -12,6 +12,9 @@
  * The code is optimized and designed for a parallel execution with exception for graphics.
  * The measurements, to ensure a fair comparison, are done on the "core" of boids simulation.
  * The code, respect the sequential version, is slightly different and optimized for parallelization.
+ * Differently from AOS_parallel uses SIMD directives and helper with alignment (and so implicit padding).
+ * To enforce some alignment and possibly implicit padding I use some posix directives not so portable and
+ * I didn't use std::vector<>.
  * **/
 
 int main(int argc, char* argv[]) {
@@ -30,8 +33,9 @@ int main(int argc, char* argv[]) {
     std::cout << "OPEN_MP working" << "\n";
 #endif
 
-
-    std::vector<Boid> boids(N);
+    //Aligned allocation
+    Boid* boids = allocate_aligned_boids(N);
+    Boid* boids_next = allocate_aligned_boids(N);
     std::vector<std::unique_ptr<sf::CircleShape>> shapes(N);
 
     //Constants definition
@@ -74,7 +78,7 @@ int main(int argc, char* argv[]) {
     window.setFramerateLimit(60); // call it once after creating the window
 
 
-    std::vector<Boid> boids_next = boids;
+
 
     while (window.isOpen() && iterations < FRAMES) {
         window.clear(sf::Color::Black);
@@ -85,7 +89,6 @@ int main(int argc, char* argv[]) {
                 window.close();
         }
 
-        // to print boids
 
 
         // without counting the graphic, pure boids performance
@@ -94,7 +97,7 @@ int main(int argc, char* argv[]) {
         // Here starts the parallelization
 #pragma omp parallel default(none) shared(N, boids, boids_next)
         {
-#pragma omp for schedule(static)
+#pragma omp for simd schedule(static) safelen(8) //safelen(8) suggests a vectorization factor of 8 (32 bytes)
         for (int i=0; i<N; i++) { //To scan every boid
 
             //Variables definition and inizialization
@@ -178,7 +181,9 @@ int main(int argc, char* argv[]) {
         }
         }
 
-        boids.swap(boids_next);
+        Boid* temp = boids;
+        boids = boids_next;
+        boids_next = temp;
 
         iterations++;
 
@@ -188,7 +193,7 @@ int main(int argc, char* argv[]) {
 
         //Graphical part not parallelized, so outside the measurement
 
-        print_boids(boids, shapes, window);
+        print_boids(boids, N, shapes, window);
 
         window.display();
 
@@ -202,6 +207,8 @@ int main(int argc, char* argv[]) {
 
     printf("Frame %d duration: %lld milliseconds\n", iterations, total_duration.count());
 
+    free(boids);
+    free(boids_next);
     return 0;
 }
 
@@ -213,14 +220,13 @@ float random_float(float min, float max) {
 }
 
 
-void print_boids(const std::vector<Boid>& boids, std::vector<std::unique_ptr<sf::CircleShape>>& shapes,
+void print_boids(const Boid* boids, int N, std::vector<std::unique_ptr<sf::CircleShape>>& shapes,
                  sf::RenderWindow& window)
 {
-    for (int i = 0; i < boids.size(); ++i) {
+    for (int i = 0; i < N; ++i) {
         shapes[i]->setPosition({boids[i].x, boids[i].y});
         window.draw(*shapes[i]);
     }
-
 }
 
 void append_csv(const std::string& filename,
@@ -239,6 +245,17 @@ void append_csv(const std::string& filename,
         << frames << ","
         << threads << ","
         << time_ms << "\n";
+}
+Boid* allocate_aligned_boids(int N) {
+    const size_t ALIGNMENT = 32;
+    size_t total_size = N * sizeof(Boid);
+    void* ptr = nullptr;
+
+    // posix_memalign, so not very portable
+    if (posix_memalign(&ptr, ALIGNMENT, total_size) != 0) {
+        throw std::bad_alloc();
+    }
+    return static_cast<Boid*>(ptr);
 }
 
 

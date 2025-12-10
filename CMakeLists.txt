@@ -11,6 +11,7 @@ else ()
 endif ()
 
 #To use SIMD instructions. Include -mavx.
+add_compile_options("-mavx")
 add_compile_options("-mavx2")
 
 #From the SFML site for CMake configurations
@@ -41,10 +42,7 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Benchmark")
     add_compile_options("-O3")
     add_compile_options("-mfma")
     add_compile_options("-march=native")
-    add_compile_options("-fvectorize")
-    add_compile_options("-fno-math-errno")
-    add_compile_options("-gdwarf-4")
-    add_compile_options("-g")
+    add_compile_options("-ftree-vectorize")
 endif()
 
 add_executable(Sequential sequential.cpp sequential_helper.h)
@@ -54,4 +52,8 @@ target_link_libraries(Sequential PRIVATE SFML::Graphics)
 add_executable(AOS_parallel AOS_parallel.cpp AOS_helper.h)
 target_compile_features(AOS_parallel  PRIVATE cxx_std_17)
 target_link_libraries(AOS_parallel  PRIVATE SFML::Graphics)
+
+add_executable(AOS_parallel_SIMD AOS_parallel_SIMD.cpp AOS_helper_padding.h)
+target_compile_features(AOS_parallel_SIMD  PRIVATE cxx_std_17)
+target_link_libraries(AOS_parallel_SIMD  PRIVATE SFML::Graphics)
 

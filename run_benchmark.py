@@ -1,20 +1,19 @@
 import os
 import subprocess
-import csv
-import statistics
 
-#experiments setting
+
+#experiments settings
 
 EXECUTABLES = {
-    "Sequential": "cmake-build-debug/Sequential",
+    "AOS_parallel": "cmake-build-debug/AOS_parallel",
 }
 
-Boids_values = [100,500,1000,2000,4000]
-Threads_values = [1, 2]
+Boids_values = [1000,2000,4000,8000,10000]
+Threads_values = [1,2,4,8]
 Frames = 300
 N_experiments = 6
 
-CSV_OUT = "sequential_results.csv"
+CSV_OUT = "AOS_results.csv"
 
 def run_benchmarks(exe, n_boids, n_threads):
 
