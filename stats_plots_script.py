@@ -5,8 +5,8 @@ import numpy as np
 def drop_first(group): #to drop the first execution and have a more reliable average
     return group.iloc[1:]
 
-data_seq = "./1000-2000-4000-8000-10000/sequential_results_bench_300frames.csv"
-data_AOS = "./1000-2000-4000-8000-10000/AOS_parallel_results_bench_300frames.csv"
+data_seq = "./test_bench/sequential_results.csv"
+data_AOS = "./test_bench/AOS_SIMD_results.csv"
 
 
 
@@ -69,10 +69,10 @@ for threads in sorted(df_speedup["threads"].unique()):
 ticks = np.arange(1000, 10001, 1000)
 plt.xticks(ticks)
 plt.xlim(900, 10100)
-plt.ylim(1, 5)
+plt.ylim(0, 5)
 plt.xlabel("N")
 plt.ylabel("Speed-up")
-plt.title("AOS vs Sequential. 300 Frames")
+plt.title("AOS_padding_SIMD vs Sequential. 300 Frames")
 plt.legend()
 
 plt.grid(True)

@@ -5,9 +5,7 @@
 #pragma once //to include the file only once
 
 /**
- * This helper is very similar to the sequential one, but has a separation
- * between the Boid struct and the graphics to facilitate the parallelization handling.
- * Differently from AOS_helper uses alignment (and so padding implicitly).
+ * This helper is very similar to the AOS one, but uses padding and SIMD computation optimizations.
  **/
 
 
@@ -17,11 +15,13 @@
 #include <SFML/Graphics.hpp>
 #include <bits/stdc++.h>
 
+
+
 struct Config {
 
     int N = 1000;
     int frames = 300;
-    int threads = 1;
+    int threads = 8;
 
 
     //Parsing params passed via command line
@@ -48,13 +48,16 @@ struct Config {
                   << std::endl;
     }
 };
+#define CACHE_SIZE  32
 
 //Shape separated from Boid to better parallelize
-struct Boid {
+struct alignas(CACHE_SIZE) Boid { // CACHE_SIZE = 32 for my CPU.
     float x, y;
     float vx, vy;
-} __attribute__((aligned(32))); //32 for my CPU. It guaranties that every struct (of 16 bytes) is aligned in memory via implicit padding.
-                                //Maybe it's not portable.
+
+    char padding = (CACHE_SIZE - sizeof(float)*4); //to do a more explicit padding
+};
+
 
 Boid* allocate_aligned_boids(int N);
 

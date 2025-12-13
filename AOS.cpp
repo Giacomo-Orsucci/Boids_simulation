@@ -1,18 +1,19 @@
-#include "sequential_helper.h"
-
+#include "AOS_helper.h"
 
 #include <cmath>
 #include <iostream>
 #include <memory>
 #include <SFML/Graphics.hpp>
 #include <bits/stdc++.h>
+#include <omp.h>
 
 /**
- * This is the sequential version of boids simulation with graphics.
- * The code has a pure sequential nature, so is not optimized and not designed for
- * A parallel execution.
+ * This is the Array Of Structure version of boids simulation with graphics.
+ * The code is optimized and designed for a parallel execution with exception for graphics.
+ * The measurements, to ensure a fair comparison, are done on the "core" of boids simulation.
+ *  The execution of this code with only 1 thread has been empirically proven to be equivalent to
+ *  the sequential one.
  * **/
-
 
 int main(int argc, char* argv[]) {
 
@@ -21,8 +22,18 @@ int main(int argc, char* argv[]) {
     const int N = cfg.N;
     const int FRAMES = cfg.frames;
 
+    //cfg.threads = 8; // to test
+    omp_set_num_threads(cfg.threads);
+    std::cout<<"Threads set: " <<cfg.threads<<"\n";
+
+
+#ifdef _OPENMP
+    std::cout << "OPEN_MP working" << "\n";
+#endif
+
 
     std::vector<Boid> boids(N);
+    std::vector<std::unique_ptr<sf::CircleShape>> shapes(N);
 
     //Constants definition
     constexpr float TURN_FACTOR = 0.2;
@@ -39,7 +50,6 @@ int main(int argc, char* argv[]) {
     constexpr int RIGHT_MARGIN = 800;
     constexpr float MARGIN = 80;
 
-    float speed = 0;
 
     int iterations = 0;
 
@@ -53,7 +63,8 @@ int main(int argc, char* argv[]) {
         boids[i].vx = random_float(-MAX_SPEED, MAX_SPEED);
         boids[i].vy = random_float(-MAX_SPEED, MAX_SPEED);
 
-        boids[i].shape = std::make_unique<sf::CircleShape>(3.f, 3);
+        shapes[i] = std::make_unique<sf::CircleShape>(3.f, 3);
+
     }
 
     //Graphical window creation
@@ -62,6 +73,9 @@ int main(int argc, char* argv[]) {
 
     sf::RenderWindow window(sf::VideoMode({X_SIZE, Y_SIZE}), "Boids simulation");
     window.setFramerateLimit(60); // call it once after creating the window
+
+
+    std::vector<Boid> boids_next = boids;
 
     while (window.isOpen() && iterations < FRAMES) {
         window.clear(sf::Color::Black);
@@ -72,34 +86,41 @@ int main(int argc, char* argv[]) {
                 window.close();
         }
 
-        for (int i=0; i<N; i++)
-            print_boid(boids[i], window);
 
         // without counting the graphic, pure boids performance
         const auto start = std::chrono::high_resolution_clock::now();
-        //To scan every boid
-        for (int i=0; i<N; i++) {
 
-            //Variables definition
+        // Here starts the parallelization
+#pragma omp parallel default(none) shared(N, boids, boids_next)
+        {
+#pragma omp for schedule(static)
+        for (int i=0; i<N; i++) { //To scan every boid
+
+            //Variables definition and inizialization
             float dx =0, dy = 0, sqd=0, close_dx=0, close_dy=0, x_avg=0,
             y_avg=0, xv_avg=0, yv_avg=0, n_neighbours=0;
+
+            float xi = boids[i].x;
+            float yi = boids[i].y;
+            float vxi = boids[i].vx;
+            float vyi = boids[i].vy;
 
             //To compare every boid with everyone else
             for (int j = 0; j<N; j++){
                 if (j==i)
                     continue;
 
-                dx = boids[i].x - boids[j].x;
-                dy = boids[i].y - boids[j].y;
+                dx = xi - boids[j].x;
+                dy = yi - boids[j].y;
 
                 if (std::fabs(dx)<VISUAL_RANGE && std::fabs(dy)<VISUAL_RANGE) {
 
-                    sqd = squared_distance((boids[i]), boids[j]);
+                    sqd = dx*dx + dy*dy;
 
                     if (sqd < PROTECTED_RANGE*PROTECTED_RANGE) {
                         //Distance from near boids
-                        close_dx += (boids[i].x - boids[j].x);
-                        close_dy += (boids[i].y - boids[j].y);
+                        close_dx += (xi - boids[j].x);
+                        close_dy += (yi - boids[j].y);
 
                         //if not in protected range, check the visual one
                     }else if (sqd < VISUAL_RANGE*VISUAL_RANGE) {
@@ -119,55 +140,62 @@ int main(int argc, char* argv[]) {
                 xv_avg /= n_neighbours;
                 yv_avg /= n_neighbours;
 
-                boids[i].vx = boids[i].vx + (x_avg-boids[i].x)*CENTERING_FACTOR + (xv_avg - boids[i].vx)*MATCHING_FACTOR;
-                boids[i].vy = boids[i].vy + (y_avg-boids[i].y)*CENTERING_FACTOR + (yv_avg - boids[i].vy)*MATCHING_FACTOR;
+                vxi = vxi + (x_avg-xi)*CENTERING_FACTOR + (xv_avg - vxi)*MATCHING_FACTOR;
+                vyi = vyi + (y_avg-yi)*CENTERING_FACTOR + (yv_avg - vyi)*MATCHING_FACTOR;
             }
-            boids[i].vx = boids[i].vx + close_dx*AVOID_FACTOR;
-            boids[i].vy = boids[i].vy + close_dy*AVOID_FACTOR;
+            vxi = vxi + close_dx*AVOID_FACTOR;
+            vyi = vyi + close_dy*AVOID_FACTOR;
 
             //Verification of edges condition
-            if (boids[i].y > TOP_MARGIN-MARGIN)
-                boids[i].vy -= TURN_FACTOR;
-            if (boids[i].y < BOT_MARGIN + MARGIN)
-                boids[i].vy += TURN_FACTOR;
-            if (boids[i].x < LEFT_MARGIN + MARGIN)
-                boids[i].vx += TURN_FACTOR;
-            if (boids[i].x > RIGHT_MARGIN - MARGIN)
-                boids[i].vx -= TURN_FACTOR;
+            if (yi > TOP_MARGIN-MARGIN)
+                vyi -= TURN_FACTOR;
+            if (yi < BOT_MARGIN + MARGIN)
+                vyi += TURN_FACTOR;
+            if (xi < LEFT_MARGIN + MARGIN)
+                vxi += TURN_FACTOR;
+            if (xi > RIGHT_MARGIN - MARGIN)
+                vxi -= TURN_FACTOR;
 
-            speed = sqrt(pow(boids[i].vx, 2) + pow(boids[i].vy, 2));
+            float speed = sqrt(vxi*vxi + vyi*vyi);
 
-            if (speed < MIN_SPEED) {
-                boids[i].vx = (boids[i].vx/speed)*MIN_SPEED;
-                boids[i].vy = (boids[i].vy/speed)*MIN_SPEED;
+            if (speed > 0 && speed < MIN_SPEED) {
+                vxi = (vxi/speed)*MIN_SPEED;
+                vyi = (vyi/speed)*MIN_SPEED;
             }
-            else if (speed > MAX_SPEED) {
-                boids[i].vx = (boids[i].vx/speed)*MAX_SPEED;
-                boids[i].vy = (boids[i].vy/speed)*MAX_SPEED;
+            else if (speed > 0 && speed > MAX_SPEED) {
+                vxi = (vxi/speed)*MAX_SPEED;
+                vyi = (vyi/speed)*MAX_SPEED;
             }
 
-            boids[i].x += boids[i].vx;
-            boids[i].y += boids[i].vy;
+            boids_next[i].x  = xi + vxi;
+            boids_next[i].y  = yi + vyi;
+            boids_next[i].vx = vxi;
+            boids_next[i].vy = vyi;
 
         }
+        }
+
+        boids.swap(boids_next);
+
         iterations++;
 
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         total_duration += duration;
 
+        //Graphical part not parallelized, so outside the measurement
+
+        print_boids(boids, shapes, window);
+
         window.display();
 
-
     }
-
     total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_duration);
-
-    append_csv("sequential_results.csv",
-           cfg.N,
-           cfg.frames,
-           cfg.threads,
-           total_duration.count());
+    append_csv("AOS_parallel_results.csv",
+          cfg.N,
+          cfg.frames,
+          cfg.threads,
+          total_duration.count());
 
     printf("Frame %d duration: %lld milliseconds\n", iterations, total_duration.count());
 
@@ -181,13 +209,17 @@ float random_float(float min, float max) {
     return dist(gen);
 }
 
-float squared_distance(const Boid& a, const Boid& b){
-    return static_cast<float>(pow((a.x - b.x), 2) + pow(a.y - b.y, 2));
+
+void print_boids(const std::vector<Boid>& boids, std::vector<std::unique_ptr<sf::CircleShape>>& shapes,
+                 sf::RenderWindow& window)
+{
+    for (int i = 0; i < boids.size(); ++i) {
+        shapes[i]->setPosition({boids[i].x, boids[i].y});
+        window.draw(*shapes[i]);
+    }
+
 }
-void print_boid(Boid& boid, sf::RenderWindow& window) {
-    boid.shape->setPosition({boid.x, boid.y});
-    window.draw(*boid.shape);
-}
+
 void append_csv(const std::string& filename,
                 int N, int frames, int threads,
                 long long time_ms)
@@ -205,6 +237,5 @@ void append_csv(const std::string& filename,
         << threads << ","
         << time_ms << "\n";
 }
-
 
 

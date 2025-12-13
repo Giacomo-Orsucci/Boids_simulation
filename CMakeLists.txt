@@ -31,29 +31,20 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_link_options("-fsanitize=address,leak,undefined")
     add_compile_options("-g")
 
-elseif (CMAKE_BUILD_TYPE STREQUAL "ThreadsDebugging") #separated, need different flags
-    # works better disabling ASLR (for LINUX, in terminal: sudo echo 0 | sudo tee /proc/sys/kernel/randomize_va_space)
-    # print 0 if ASLR has been disabled
-    add_compile_options("-fsanitize=thread")
-    add_compile_options("-g")
-    add_compile_options("-O2")
-    add_link_options("-fsanitize=thread")
 elseif (CMAKE_BUILD_TYPE STREQUAL "Benchmark")
     add_compile_options("-O3")
     add_compile_options("-mfma")
     add_compile_options("-march=native")
-    add_compile_options("-ftree-vectorize")
+    add_compile_options("-fno-math-errno")
+    add_compile_options("-ffast-math")
 endif()
 
-add_executable(Sequential sequential.cpp sequential_helper.h)
-target_compile_features(Sequential PRIVATE cxx_std_17)
-target_link_libraries(Sequential PRIVATE SFML::Graphics)
 
-add_executable(AOS_parallel AOS_parallel.cpp AOS_helper.h)
-target_compile_features(AOS_parallel  PRIVATE cxx_std_17)
-target_link_libraries(AOS_parallel  PRIVATE SFML::Graphics)
+add_executable(AOS AOS.cpp AOS_helper.h)
+target_compile_features(AOS  PRIVATE cxx_std_17)
+target_link_libraries(AOS  PRIVATE SFML::Graphics)
 
-add_executable(AOS_parallel_SIMD AOS_parallel_SIMD.cpp AOS_helper_padding.h)
+add_executable(AOS_parallel_SIMD AOS_parallel_SIMD.cpp AOS_helper_SIMD.h)
 target_compile_features(AOS_parallel_SIMD  PRIVATE cxx_std_17)
 target_link_libraries(AOS_parallel_SIMD  PRIVATE SFML::Graphics)
 

@@ -1,4 +1,4 @@
-#include "AOS_helper_padding.h"
+#include "AOS_helper_SIMD.h"
 
 #include <cmath>
 #include <iostream>
@@ -11,10 +11,10 @@
  * This is the Array Of Structure version of boids simulation with graphics.
  * The code is optimized and designed for a parallel execution with exception for graphics.
  * The measurements, to ensure a fair comparison, are done on the "core" of boids simulation.
- * The code, respect the sequential version, is slightly different and optimized for parallelization.
- * Differently from AOS_parallel uses SIMD directives and helper with alignment (and so implicit padding).
- * To enforce some alignment and possibly implicit padding I use some posix directives not so portable and
- * I didn't use std::vector<>.
+ * Differently from AOS_parallel uses SIMD directives and helper with alignment padding in boid struct.
+ * To this purpose, I didn't use std::vector<> and I reorganized the code to facilitate SIMD optimization.
+ * (where the code uses SIMD directives, there are no different possible paths).
+ *
  * **/
 
 int main(int argc, char* argv[]) {
@@ -53,6 +53,9 @@ int main(int argc, char* argv[]) {
     constexpr int RIGHT_MARGIN = 800;
     constexpr float MARGIN = 80;
 
+    constexpr float SQ_PROTECTED_RANGE = PROTECTED_RANGE*PROTECTED_RANGE;
+    constexpr float SQ_VISUAL_RANGE = VISUAL_RANGE*VISUAL_RANGE;
+
 
     int iterations = 0;
 
@@ -89,66 +92,71 @@ int main(int argc, char* argv[]) {
                 window.close();
         }
 
-
-
         // without counting the graphic, pure boids performance
         const auto start = std::chrono::high_resolution_clock::now();
 
         // Here starts the parallelization
 #pragma omp parallel default(none) shared(N, boids, boids_next)
         {
-#pragma omp for simd schedule(static) safelen(8) //safelen(8) suggests a vectorization factor of 8 (32 bytes)
+#pragma omp for schedule(static)
         for (int i=0; i<N; i++) { //To scan every boid
 
             //Variables definition and inizialization
-            float dx =0, dy = 0, sqd=0, close_dx=0, close_dy=0, x_avg=0,
-            y_avg=0, xv_avg=0, yv_avg=0, n_neighbours=0;
-
-            float xi = boids[i].x;
-            float yi = boids[i].y;
+            float xi  = boids[i].x;
+            float yi  = boids[i].y;
             float vxi = boids[i].vx;
             float vyi = boids[i].vy;
+            float x_avg=0;
+            float y_avg=0;
+            float xv_avg=0;
+            float yv_avg=0;
+            float n_neighbours=0;
+            float close_dx = 0.0f;
+            float close_dy = 0.0f;
+
+
 
             //To compare every boid with everyone else
-            for (int j = 0; j<N; j++){
-                if (j==i)
-                    continue;
+#pragma omp simd
+            for (int j = 0; j < N; j++){
 
-                dx = xi - boids[j].x;
-                dy = yi - boids[j].y;
 
-                if (std::fabs(dx)<VISUAL_RANGE && std::fabs(dy)<VISUAL_RANGE) {
+                float dx = xi - boids[j].x;
+                float dy = yi - boids[j].y;
+                float dist_sq = dx*dx + dy*dy;
 
-                    sqd = dx*dx + dy*dy;
 
-                    if (sqd < PROTECTED_RANGE*PROTECTED_RANGE) {
-                        //Distance from near boids
-                        close_dx += (xi - boids[j].x);
-                        close_dy += (yi - boids[j].y);
+                float is_protected = (dist_sq < SQ_PROTECTED_RANGE) ? 1.0f : 0.0f;
+                float is_visible   = (dist_sq < SQ_VISUAL_RANGE) ? 1.0f : 0.0f;
 
-                        //if not in protected range, check the visual one
-                    }else if (sqd < VISUAL_RANGE*VISUAL_RANGE) {
-                        x_avg += boids[j].x;
-                        y_avg += boids[j].y;
-                        xv_avg += boids[j].vx;
-                        yv_avg += boids[j].vy;
-                        n_neighbours++;
-                    }
+                float is_alignment = is_visible - is_protected;
 
-                }
+                close_dx += (dx) * is_protected;
+                close_dy += (dy) * is_protected;
+
+                xv_avg += boids[j].vx * is_alignment;
+                yv_avg += boids[j].vy * is_alignment;
+
+                x_avg += boids[j].x * is_alignment;
+                y_avg += boids[j].y * is_alignment;
+
+                n_neighbours += is_alignment;
+
             }
+
             //If there are boids in the visual range, make the boids go to their center
-            if (n_neighbours > 0) {
+            if (n_neighbours > 0.0f) {
                 x_avg /= n_neighbours;
                 y_avg /= n_neighbours;
                 xv_avg /= n_neighbours;
                 yv_avg /= n_neighbours;
 
-                vxi = vxi + (x_avg-xi)*CENTERING_FACTOR + (xv_avg - vxi)*MATCHING_FACTOR;
-                vyi = vyi + (y_avg-yi)*CENTERING_FACTOR + (yv_avg - vyi)*MATCHING_FACTOR;
+                vxi +=  (x_avg - xi) * CENTERING_FACTOR + (xv_avg - vxi) * MATCHING_FACTOR;
+                vyi += (y_avg - yi) * CENTERING_FACTOR + (yv_avg - vyi) * MATCHING_FACTOR;
             }
-            vxi = vxi + close_dx*AVOID_FACTOR;
-            vyi = vyi + close_dy*AVOID_FACTOR;
+            vxi += close_dx * AVOID_FACTOR;
+            vyi += close_dy * AVOID_FACTOR;
+
 
             //Verification of edges condition
             if (yi > TOP_MARGIN-MARGIN)
@@ -158,19 +166,19 @@ int main(int argc, char* argv[]) {
             if (xi < LEFT_MARGIN + MARGIN)
                 vxi += TURN_FACTOR;
             if (xi > RIGHT_MARGIN - MARGIN)
-                vxi -= TURN_FACTOR;
+               vxi -= TURN_FACTOR;
 
-            float speed = sqrt(vxi*vxi + vyi*vyi);
+            float speed = std::sqrt(vxi*vxi + vyi*vyi);
 
             if (speed > 0 && speed < MIN_SPEED) {
-                vxi = (vxi/speed)*MIN_SPEED;
-                vyi = (vyi/speed)*MIN_SPEED;
+                float scale = MIN_SPEED / speed;
+                vxi *= scale;
+                vyi *= scale;
             }
-            else if (speed > 0 && speed > MAX_SPEED) {
-                vxi = (vxi/speed)*MAX_SPEED;
-                vyi = (vyi/speed)*MAX_SPEED;
-            }else {
-                speed = 1;
+            else if (speed > MAX_SPEED) {
+                float scale = MAX_SPEED / speed;
+                vxi *= scale;
+                vyi *= scale;
             }
 
             boids_next[i].x  = xi + vxi;
@@ -181,9 +189,7 @@ int main(int argc, char* argv[]) {
         }
         }
 
-        Boid* temp = boids;
-        boids = boids_next;
-        boids_next = temp;
+        std::swap(boids, boids_next);
 
         iterations++;
 
@@ -199,7 +205,7 @@ int main(int argc, char* argv[]) {
 
     }
     total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_duration);
-    append_csv("AOS_parallel.csv",
+    append_csv("AOS_SIMD_results.csv",
           cfg.N,
           cfg.frames,
           cfg.threads,
@@ -247,14 +253,22 @@ void append_csv(const std::string& filename,
         << time_ms << "\n";
 }
 Boid* allocate_aligned_boids(int N) {
-    const size_t ALIGNMENT = 32;
-    size_t total_size = N * sizeof(Boid);
-    void* ptr = nullptr;
 
-    // posix_memalign, so not very portable
-    if (posix_memalign(&ptr, ALIGNMENT, total_size) != 0) {
-        throw std::bad_alloc();
+    const size_t ALIGNMENT = 32;
+
+    size_t total_size = N * sizeof(Boid);
+
+    if (total_size % ALIGNMENT != 0) {
+        total_size += ALIGNMENT - (total_size % ALIGNMENT);
     }
+
+    void* ptr = std::aligned_alloc(ALIGNMENT, total_size);
+
+    if (!ptr) {
+        std::cerr << "Aligned allocation failed!" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
     return static_cast<Boid*>(ptr);
 }
 

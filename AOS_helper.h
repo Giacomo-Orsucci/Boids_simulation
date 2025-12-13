@@ -4,11 +4,6 @@
 
 #pragma once //to include the file only once
 
-/**
- * This helper is very similar to the sequential one, but has a separation
- * between the Boid struct and the graphics to facilitate the parallelization handling
- **/
-
 
 #include <string>
 #include <iostream>
@@ -20,7 +15,7 @@ struct Config {
 
     int N = 1000;
     int frames = 300;
-    int threads = 1;
+    int threads = 8;
 
 
     //Parsing params passed via command line
