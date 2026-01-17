@@ -205,7 +205,7 @@ int main(int argc, char* argv[]) {
 
     }
     total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_duration);
-    append_csv("AOS_SIMD_results.csv",
+    append_csv("AOS_parallel_SIMD_noPadding.csv",
           cfg.N,
           cfg.frames,
           cfg.threads,

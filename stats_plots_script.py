@@ -5,8 +5,8 @@ import numpy as np
 def drop_first(group): #to drop the first execution and have a more reliable average
     return group.iloc[1:]
 
-data_seq = "./test_bench/sequential_results.csv"
-data_AOS = "./test_bench/AOS_SIMD_results.csv"
+data_seq = "./test_bench/seq.csv"
+data_AOS = "./test_bench/AOS_parallel_SIMD_noPadding.csv"
 
 
 
@@ -22,7 +22,7 @@ df_filtered_seq = df_seq.groupby('N', group_keys=False).apply(drop_first)
 mean_times_seq = df_filtered_seq.groupby('N')['time_ms'].mean()
 
 
-print("To visualize if averages has been properly calculated (sequential) (ms): ")
+print("To visualize if averages have been properly calculated (sequential) (ms): ")
 print(mean_times_seq)
 
 df_AOS = pd.read_csv(data_AOS, comment='#', header=None, names=['N', 'frames', 'threads', 'time_ms'])
@@ -38,7 +38,7 @@ df_filtered_AOS = df_AOS[df_AOS['run_idx'] > 0]
 mean_times_AOS = df_filtered_AOS.groupby(['N', 'threads'])['time_ms'].mean()
 
 
-print("To visualize if averages has been properly calculated (AOS) (ms): ")
+print("To visualize if averages have been properly calculated (AOS) (ms): ")
 print(mean_times_AOS)
 
 
@@ -66,13 +66,13 @@ for threads in sorted(df_speedup["threads"].unique()):
     plt.plot(sub["N"], sub["speedup"], marker="o", label=f"{threads} threads")
 
 
-ticks = np.arange(1000, 10001, 1000)
+ticks = np.arange(1500, 12001, 1500)
 plt.xticks(ticks)
-plt.xlim(900, 10100)
-plt.ylim(0, 5)
+plt.xlim(1400, 12100)
+plt.ylim(0, 6)
 plt.xlabel("N")
 plt.ylabel("Speed-up")
-plt.title("AOS_padding_SIMD vs Sequential. 300 Frames")
+plt.title("AOS_SIMD_noPadding vs Sequential. 300 Frames")
 plt.legend()
 
 plt.grid(True)
