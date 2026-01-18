@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
         // without counting the graphic, pure boids performance
         const auto start = std::chrono::high_resolution_clock::now();
 
-        // Here starts the parallelization
+        // --- Parallel Region ---
 #pragma omp parallel default(none) shared(N, boids, boids_next)
         {
 #pragma omp for schedule(static)
@@ -125,10 +125,11 @@ int main(int argc, char* argv[]) {
                 float dy = yi - boids[j].y;
                 float dist_sq = dx*dx + dy*dy;
 
-
+                // Branchless logic
                 float is_protected = (dist_sq < SQ_PROTECTED_RANGE) ? 1.0f : 0.0f;
                 float is_visible   = (dist_sq < SQ_VISUAL_RANGE) ? 1.0f : 0.0f;
 
+                // A boid aligns only if it's visible BUT NOT protected
                 float is_alignment = is_visible - is_protected;
 
                 close_dx += (dx) * is_protected;
@@ -143,6 +144,8 @@ int main(int argc, char* argv[]) {
                 n_neighbours += is_alignment;
 
             }
+
+            // --- End SIMD Loop ---
 
             //If there are boids in the visual range, make the boids go to their center
             if (n_neighbours > 0.0f) {
@@ -252,12 +255,14 @@ void append_csv(const std::string& filename,
         << threads << ","
         << time_ms << "\n";
 }
+// Aligned allocation ensures the starting address of each array is a multiple of 32 bytes.
 Boid* allocate_aligned_boids(int N) {
 
     const size_t ALIGNMENT = 32;
 
     size_t total_size = N * sizeof(Boid);
 
+    // Padding: size passed to aligned_alloc must be a multiple of alignment
     if (total_size % ALIGNMENT != 0) {
         total_size += ALIGNMENT - (total_size % ALIGNMENT);
     }

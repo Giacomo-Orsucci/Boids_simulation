@@ -48,8 +48,12 @@ add_executable(AOS_parallel_SIMD AOS_parallel_SIMD.cpp AOS_helper_SIMD.h)
 target_compile_features(AOS_parallel_SIMD  PRIVATE cxx_std_17)
 target_link_libraries(AOS_parallel_SIMD  PRIVATE SFML::Graphics)
 
-add_executable(SOA_parallel SOA.cpp SOA.h)
+add_executable(SOA SOA.cpp SOA_helper.h)
 target_compile_features(SOA  PRIVATE cxx_std_17)
 target_link_libraries(SOA  PRIVATE SFML::Graphics)
+
+add_executable(SOA_parallel_SIMD SOA_parallel_SIMD.cpp SOA_helper_SIMD.h)
+target_compile_features(SOA_parallel_SIMD  PRIVATE cxx_std_17)
+target_link_libraries(SOA_parallel_SIMD  PRIVATE SFML::Graphics)
 
 

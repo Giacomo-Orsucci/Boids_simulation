@@ -6,7 +6,8 @@ def drop_first(group): #to drop the first execution and have a more reliable ave
     return group.iloc[1:]
 
 data_seq = "./test_bench/seq.csv"
-data_AOS = "./test_bench/AOS_parallel_SIMD_noPadding.csv"
+data_SOA = "./test_bench/AOS_parallel_SIMD_noPadding.csv"
+data_SOA = "./test_bench/SOA_SIMD_noPadding_results.csv"
 
 
 
@@ -25,7 +26,7 @@ mean_times_seq = df_filtered_seq.groupby('N')['time_ms'].mean()
 print("To visualize if averages have been properly calculated (sequential) (ms): ")
 print(mean_times_seq)
 
-df_AOS = pd.read_csv(data_AOS, comment='#', header=None, names=['N', 'frames', 'threads', 'time_ms'])
+df_AOS = pd.read_csv(data_SOA, comment='#', header=None, names=['N', 'frames', 'threads', 'time_ms'])
 df_AOS = df_AOS[df_AOS['N'] != 'N']
 
 df_AOS = df_AOS.astype({'N': int, 'frames': int, 'threads': int, 'time_ms': int})
@@ -69,10 +70,10 @@ for threads in sorted(df_speedup["threads"].unique()):
 ticks = np.arange(1500, 12001, 1500)
 plt.xticks(ticks)
 plt.xlim(1400, 12100)
-plt.ylim(0, 6)
+plt.ylim(0, 10)
 plt.xlabel("N")
 plt.ylabel("Speed-up")
-plt.title("AOS_SIMD_noPadding vs Sequential. 300 Frames")
+plt.title("SOA_SIMD_noPadding vs Sequential. 300 Frames")
 plt.legend()
 
 plt.grid(True)

@@ -5,7 +5,7 @@ import subprocess
 #experiments settings
 
 EXECUTABLES = {
-    "AOS_parallel_SIMD": "cmake-build-benchmark/AOS_parallel_SIMD",
+    "SOA_SIMD": "cmake-build-benchmark/SOA_parallel_SIMD",
 }
 
 Boids_values = [1500,3000,6000,9000,12000]
@@ -13,7 +13,7 @@ Threads_values = [1, 2, 4, 8]
 Frames = 300
 N_experiments = 6
 
-CSV_OUT = "AOS_parallel_SIMD_noPadding.csv"
+CSV_OUT = "SOA_SIMD_noPadding_results.csv"
 
 def run_benchmarks(exe, n_boids, n_threads):
 

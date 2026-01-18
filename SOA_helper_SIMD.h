@@ -1,21 +1,23 @@
 //
+// Created by giacomo on 18/01/26.
+//
+//
 // Created by giacomo on 05/12/25.
 //
 
-#pragma once //to include the file only once
-
-/**
- * This helper is very similar to the AOS one, but uses padding and SIMD computation optimizations.
- **/
-
+#pragma once
 
 #include <string>
 #include <iostream>
 #include <memory>
+#include <vector>
 #include <SFML/Graphics.hpp>
-#include <bits/stdc++.h>
+#include <cstdlib>
 
-
+/**
+ * This helper provides the Structure of Arrays (SoA) layout with aligned memory allocation.
+ * Alignment (32 bytes) is required for efficient SIMD (AVX) processing.
+ **/
 
 struct Config {
 
@@ -23,19 +25,17 @@ struct Config {
     int frames = 300;
     int threads = 8;
 
-
     //Parsing params passed via command line
     void parse(int argc, char* argv[]) {
-        for (int i = 1; i < argc; ++i) { //i = 1 because for i=0 we always have the exe path
+        for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
             if (arg == "--N" && i + 1 < argc) {
                 N = std::stoi(argv[++i]);
             } else if (arg == "--frames" && i + 1 < argc) {
                 frames = std::stoi(argv[++i]);
-            }else if (arg == "--threads" && i + 1 < argc) {
+            } else if (arg == "--threads" && i + 1 < argc) {
                 threads = std::stoi(argv[++i]);
-            }
-            else {
+            } else {
                 std::cerr << "Unknown argument: " << arg << std::endl;
             }
         }
@@ -48,24 +48,29 @@ struct Config {
                   << std::endl;
     }
 };
-#define CACHE_SIZE  32
 
-//Shape separated from Boid to better parallelize
-// comment alignas(CACHE_SIZE) to test without padding
-struct /*alignas(CACHE_SIZE)*/ Boid { // CACHE_SIZE = 32 for my CPU.
-    float x, y;
-    float vx, vy;
 
-    // comment to test without padding
-   // char padding = (CACHE_SIZE - sizeof(float)*4); //to do a more "internal" padding and not only alignment
+struct Boids {
+    float *x, *y;
+    float *vx, *vy;
 };
 
+// Aligned allocation ensures the starting address of each array is a multiple of 32 bytes.
+inline Boids allocate_aligned_boids(int N);
 
-Boid* allocate_aligned_boids(int N);
+inline void free_boids_aligned(Boids& boids) {
+    std::free(boids.x);
+    std::free(boids.y);
+    std::free(boids.vx);
+    std::free(boids.vy);
+}
 
 float random_float(float min, float max);
-void print_boids(const Boid* boids, int N, std::vector<std::unique_ptr<sf::CircleShape>>& shapes,
+
+void print_boids(const Boids& boids, int N,
+                 std::vector<std::unique_ptr<sf::CircleShape>>& shapes,
                  sf::RenderWindow& window);
+
 void append_csv(const std::string& filename,
                 int N, int frames, int threads,
                 long long time_ms);
