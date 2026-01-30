@@ -1,6 +1,4 @@
-//
-// Created by giacomo on 18/01/26.
-//
+
 //
 // Created by giacomo on 05/12/25.
 //
@@ -15,15 +13,16 @@
 #include <cstdlib>
 
 /**
- * This helper provides the Structure of Arrays (SoA) layout with aligned memory allocation.
- * Alignment (32 bytes) is required for efficient SIMD (AVX) processing.
+ * This helper provides the Structure of Arrays (SOA) layout with aligned memory allocation.
+ * Alignment (32 bytes) is required for more efficient SIMD (AVX) processing.
  **/
 
 struct Config {
 
-    int N = 1000;
+    int N = 1500;
     int frames = 300;
     int threads = 8;
+    std::string csv;
 
     //Parsing params passed via command line
     void parse(int argc, char* argv[]) {
@@ -35,7 +34,10 @@ struct Config {
                 frames = std::stoi(argv[++i]);
             } else if (arg == "--threads" && i + 1 < argc) {
                 threads = std::stoi(argv[++i]);
-            } else {
+            }else if (arg == "--csv" && i + 1 < argc) {
+                csv = argv[++i];
+            }
+            else {
                 std::cerr << "Unknown argument: " << arg << std::endl;
             }
         }

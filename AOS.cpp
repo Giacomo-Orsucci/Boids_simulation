@@ -1,4 +1,4 @@
-#include "AOS_helper.h"
+#include "headers/AOS_helper.h"
 
 #include <cmath>
 #include <iostream>
@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
 
     }
     total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_duration);
-    append_csv("AOS_parallel.csv",
+    append_csv(cfg.csv,
           cfg.N,
           cfg.frames,
           cfg.threads,

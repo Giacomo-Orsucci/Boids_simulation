@@ -1,5 +1,5 @@
 //
-// Created by giacomo on 05/12/25.
+// Created by giacomo on 17/01/26.
 //
 
 #pragma once //to include the file only once
@@ -9,13 +9,13 @@
 #include <iostream>
 #include <memory>
 #include <SFML/Graphics.hpp>
-#include <bits/stdc++.h>
 
 struct Config {
 
     int N = 1000;
     int frames = 300;
     int threads = 8;
+    std::string csv;
 
 
     //Parsing params passed via command line
@@ -28,6 +28,8 @@ struct Config {
                 frames = std::stoi(argv[++i]);
             }else if (arg == "--threads" && i + 1 < argc) {
                 threads = std::stoi(argv[++i]);
+            }else if (arg == "--csv" && i + 1 < argc) {
+                csv = argv[++i];
             }
             else {
                 std::cerr << "Unknown argument: " << arg << std::endl;
@@ -44,14 +46,35 @@ struct Config {
 };
 
 //Shape separated from Boid to better parallelize
-struct Boid {
-    float x, y;
-    float vx, vy;
+struct Boids {
+    float *x, *y;
+    float *vx, *vy;
 };
 
+inline Boids boids_allocation(int N) {
+    Boids boids;
+
+    boids.x  = new float[N];
+    boids.y  = new float[N];
+    boids.vx = new float[N];
+    boids.vy = new float[N];
+
+    return boids;
+
+}
 float random_float(float min, float max);
-void print_boids(const std::vector<Boid>& boids, std::vector<std::unique_ptr<sf::CircleShape>>& shapes,
+
+void print_boids(const Boids& boids, int N,
+                 std::vector<std::unique_ptr<sf::CircleShape>>& shapes,
                  sf::RenderWindow& window);
+
 void append_csv(const std::string& filename,
                 int N, int frames, int threads,
                 long long time_ms);
+
+inline void free_boids(Boids& boids) {
+    delete [] boids.x;
+    delete [] boids.y;
+    delete [] boids.vx;
+    delete [] boids.vy;
+}

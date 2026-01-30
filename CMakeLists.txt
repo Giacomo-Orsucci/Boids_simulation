@@ -10,8 +10,7 @@ else ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xpreprocessor -fopenmp -lomp")
 endif ()
 
-#To use SIMD instructions. Include -mavx.
-add_compile_options("-mavx")
+#To use SIMD instructions. Includes -mavx.
 add_compile_options("-mavx2")
 
 #From the SFML site for CMake configurations
@@ -25,7 +24,8 @@ FetchContent_Declare(SFML
 
 FetchContent_MakeAvailable(SFML)
 
-#Differentiations depending on CMake profile
+#Differentiations depending on CMake profile. Debug includes sanitizers, Benchmark includes all
+#optimization options.
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options("-fsanitize=address,leak,undefined")
     add_link_options("-fsanitize=address,leak,undefined")
@@ -40,19 +40,19 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Benchmark")
 endif()
 
 
-add_executable(AOS AOS.cpp AOS_helper.h)
+add_executable(AOS AOS.cpp headers/AOS_helper.h)
 target_compile_features(AOS  PRIVATE cxx_std_17)
 target_link_libraries(AOS  PRIVATE SFML::Graphics)
 
-add_executable(AOS_parallel_SIMD AOS_parallel_SIMD.cpp AOS_helper_SIMD.h)
+add_executable(AOS_parallel_SIMD AOS_parallel_SIMD.cpp headers/AOS_helper_SIMD.h)
 target_compile_features(AOS_parallel_SIMD  PRIVATE cxx_std_17)
 target_link_libraries(AOS_parallel_SIMD  PRIVATE SFML::Graphics)
 
-add_executable(SOA SOA.cpp SOA_helper.h)
+add_executable(SOA SOA.cpp headers/SOA_helper.h)
 target_compile_features(SOA  PRIVATE cxx_std_17)
 target_link_libraries(SOA  PRIVATE SFML::Graphics)
 
-add_executable(SOA_parallel_SIMD SOA_parallel_SIMD.cpp SOA_helper_SIMD.h)
+add_executable(SOA_parallel_SIMD SOA_parallel_SIMD.cpp headers/SOA_helper_SIMD.h)
 target_compile_features(SOA_parallel_SIMD  PRIVATE cxx_std_17)
 target_link_libraries(SOA_parallel_SIMD  PRIVATE SFML::Graphics)
 

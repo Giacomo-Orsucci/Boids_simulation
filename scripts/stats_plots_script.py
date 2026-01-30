@@ -2,14 +2,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+#Script to plot speedups from .csv
 def drop_first(group): #to drop the first execution and have a more reliable average
     return group.iloc[1:]
 
+#results we want to compare
 data_seq = "./test_bench/seq.csv"
-data_SOA = "./test_bench/AOS_parallel_SIMD_noPadding.csv"
 data_SOA = "./test_bench/SOA_SIMD_noPadding_results.csv"
-
-
 
 
 df_seq = pd.read_csv(data_seq, comment='#', header=None, names=['N', 'frames', 'threads', 'time_ms'])
@@ -21,7 +21,6 @@ df_filtered_seq = df_seq.groupby('N', group_keys=False).apply(drop_first)
 
 #averages for every different N value
 mean_times_seq = df_filtered_seq.groupby('N')['time_ms'].mean()
-
 
 print("To visualize if averages have been properly calculated (sequential) (ms): ")
 print(mean_times_seq)
@@ -56,6 +55,7 @@ df_speedup = (
     .rename(columns={"level_0": "N", "level_1": "threads"})
 )
 
+print("df check: ")
 print(df_speedup)
 
 #---------PLOTS---------
@@ -73,7 +73,7 @@ plt.xlim(1400, 12100)
 plt.ylim(0, 10)
 plt.xlabel("N")
 plt.ylabel("Speed-up")
-plt.title("SOA_SIMD_noPadding vs Sequential. 300 Frames")
+plt.title("SOA_SIMD_noPadding_Reduction vs Sequential. 300 Frames")
 plt.legend()
 
 plt.grid(True)

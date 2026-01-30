@@ -1,7 +1,7 @@
 //
 // Created by giacomo on 18/01/26.
 //
-#include "SOA_helper_SIMD.h"
+#include "headers/SOA_helper_SIMD.h"
 
 #include <cmath>
 #include <iostream>
@@ -14,9 +14,9 @@
 #include <optional>
 
 /**
- * This is the SoA + SIMD version.
+ * This is the SOA + SIMD version.
  * It combines the cache efficiency of Structure of Arrays with the
- * computational throughput of SIMD (AVX) instructions using branchless logic.
+ * computational throughput of SIMD (AVX) instructions using, where possible, branchless logic.
  **/
 
 int main(int argc, char* argv[]) {
@@ -26,6 +26,7 @@ int main(int argc, char* argv[]) {
     const int N = cfg.N;
     const int FRAMES = cfg.frames;
 
+    //cfg.threads = 1 // to test
     omp_set_num_threads(cfg.threads);
     std::cout << "Threads set: " << cfg.threads << "\n";
 
@@ -113,14 +114,14 @@ int main(int argc, char* argv[]) {
                     float dy = yi - boids.y[j];
                     float dist_sq = dx*dx + dy*dy;
 
-                    // Branchless logic
+
                     float is_protected = (dist_sq < SQ_PROTECTED_RANGE) ? 1.0f : 0.0f;
                     float is_visible   = (dist_sq < SQ_VISUAL_RANGE) ? 1.0f : 0.0f;
 
                     // A boid aligns only if it's visible BUT NOT protected
                     float is_alignment = is_visible - is_protected;
 
-
+                    // Branchless logic
                     close_dx += dx * is_protected;
                     close_dy += dy * is_protected;
 
@@ -196,7 +197,7 @@ int main(int argc, char* argv[]) {
 
     total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_duration);
 
-    append_csv("SOA_SIMD_noPadding_results.csv",
+    append_csv(cfg.csv,
           cfg.N,
           cfg.frames,
           cfg.threads,

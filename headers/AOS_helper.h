@@ -4,10 +4,6 @@
 
 #pragma once //to include the file only once
 
-/**
- * This helper is very similar to the AOS one, but uses padding and SIMD computation optimizations.
- **/
-
 
 #include <string>
 #include <iostream>
@@ -15,13 +11,12 @@
 #include <SFML/Graphics.hpp>
 #include <bits/stdc++.h>
 
-
-
 struct Config {
 
     int N = 1000;
     int frames = 300;
     int threads = 8;
+    std::string csv;
 
 
     //Parsing params passed via command line
@@ -34,6 +29,8 @@ struct Config {
                 frames = std::stoi(argv[++i]);
             }else if (arg == "--threads" && i + 1 < argc) {
                 threads = std::stoi(argv[++i]);
+            }else if (arg == "--csv" && i + 1 < argc) {
+                csv = argv[++i];
             }
             else {
                 std::cerr << "Unknown argument: " << arg << std::endl;
@@ -48,23 +45,15 @@ struct Config {
                   << std::endl;
     }
 };
-#define CACHE_SIZE  32
 
 //Shape separated from Boid to better parallelize
-// comment alignas(CACHE_SIZE) to test without padding
-struct /*alignas(CACHE_SIZE)*/ Boid { // CACHE_SIZE = 32 for my CPU.
+struct Boid {
     float x, y;
     float vx, vy;
-
-    // comment to test without padding
-   // char padding = (CACHE_SIZE - sizeof(float)*4); //to do a more "internal" padding and not only alignment
 };
 
-
-Boid* allocate_aligned_boids(int N);
-
 float random_float(float min, float max);
-void print_boids(const Boid* boids, int N, std::vector<std::unique_ptr<sf::CircleShape>>& shapes,
+void print_boids(const std::vector<Boid>& boids, std::vector<std::unique_ptr<sf::CircleShape>>& shapes,
                  sf::RenderWindow& window);
 void append_csv(const std::string& filename,
                 int N, int frames, int threads,

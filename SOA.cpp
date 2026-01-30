@@ -2,7 +2,7 @@
 // Created by giacomo on 17/01/26.
 //
 
-#include "SOA_helper.h"
+#include "headers/SOA_helper.h"
 
 #include <cmath>
 #include <iostream>
@@ -32,7 +32,6 @@ int main(int argc, char* argv[]) {
 #ifdef _OPENMP
     std::cout << "OPEN_MP working" << "\n";
 #endif
-
 
 
     Boids boids = boids_allocation(N);
@@ -197,7 +196,7 @@ int main(int argc, char* argv[]) {
     free_boids(boids_next);
 
     total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_duration);
-    append_csv("SOA_parallel.csv",
+    append_csv(cfg.csv,
           cfg.N,
           cfg.frames,
           cfg.threads,

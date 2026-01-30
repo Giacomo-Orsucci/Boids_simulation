@@ -1,4 +1,4 @@
-#include "AOS_helper_SIMD.h"
+#include "headers/AOS_helper_SIMD.h"
 
 #include <cmath>
 #include <iostream>
@@ -13,8 +13,7 @@
  * The measurements, to ensure a fair comparison, are done on the "core" of boids simulation.
  * Differently from AOS_parallel uses SIMD directives and helper with alignment padding in boid struct.
  * To this purpose, I didn't use std::vector<> and I reorganized the code to facilitate SIMD optimization.
- * (where the code uses SIMD directives, there are no different possible paths).
- *
+ * (where the code uses SIMD directives, if possible the branches has been removed).
  * **/
 
 int main(int argc, char* argv[]) {
@@ -24,7 +23,7 @@ int main(int argc, char* argv[]) {
     const int N = cfg.N;
     const int FRAMES = cfg.frames;
 
-    //cfg.threads = 8; // to test
+    //cfg.threads = 1; // to test
     omp_set_num_threads(cfg.threads);
     std::cout<<"Threads set: " <<cfg.threads<<"\n";
 
@@ -114,8 +113,6 @@ int main(int argc, char* argv[]) {
             float close_dx = 0.0f;
             float close_dy = 0.0f;
 
-
-
             //To compare every boid with everyone else
 #pragma omp simd
             for (int j = 0; j < N; j++){
@@ -125,13 +122,14 @@ int main(int argc, char* argv[]) {
                 float dy = yi - boids[j].y;
                 float dist_sq = dx*dx + dy*dy;
 
-                // Branchless logic
+
                 float is_protected = (dist_sq < SQ_PROTECTED_RANGE) ? 1.0f : 0.0f;
                 float is_visible   = (dist_sq < SQ_VISUAL_RANGE) ? 1.0f : 0.0f;
 
                 // A boid aligns only if it's visible BUT NOT protected
                 float is_alignment = is_visible - is_protected;
 
+                // Branchless logic
                 close_dx += (dx) * is_protected;
                 close_dy += (dy) * is_protected;
 
@@ -208,7 +206,7 @@ int main(int argc, char* argv[]) {
 
     }
     total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_duration);
-    append_csv("AOS_parallel_SIMD_noPadding.csv",
+    append_csv(cfg.csv,
           cfg.N,
           cfg.frames,
           cfg.threads,
@@ -227,7 +225,6 @@ float random_float(float min, float max) {
     std::uniform_real_distribution<float> dist(min, max);
     return dist(gen);
 }
-
 
 void print_boids(const Boid* boids, int N, std::vector<std::unique_ptr<sf::CircleShape>>& shapes,
                  sf::RenderWindow& window)
